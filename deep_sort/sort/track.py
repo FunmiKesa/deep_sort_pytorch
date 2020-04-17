@@ -40,6 +40,8 @@ class Track:
     feature : Optional[ndarray]
         Feature vector of the detection this track originates from. If not None,
         this feature is added to the `features` cache.
+    class_id : int
+        The index of the class associated with this track
 
     Attributes
     ----------
@@ -64,13 +66,14 @@ class Track:
     """
 
     def __init__(self, mean, covariance, track_id, n_init, max_age,
-                 feature=None):
+                 feature=None, class_id=None):
         self.mean = mean
         self.covariance = covariance
         self.track_id = track_id
         self.hits = 1
         self.age = 1
         self.time_since_update = 0
+        self.class_id = class_id
 
         self.state = TrackState.Tentative
         self.features = []

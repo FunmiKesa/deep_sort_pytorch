@@ -15,7 +15,7 @@ from utils.io import write_results
 
 
 class VideoTracker(object):
-    def __init__(self, cfg, args, video_path):
+    def __init__(self, cfg, args, video_path, classes=['person', 'car', 'bicycle', 'bus', 'motorbike', 'truck']):
         self.cfg = cfg
         self.args = args
         self.video_path = video_path
@@ -37,6 +37,7 @@ class VideoTracker(object):
         self.detector = build_detector(cfg, use_cuda=use_cuda)
         self.deepsort = build_tracker(cfg, use_cuda=use_cuda)
         self.class_names = self.detector.class_names
+        self.classes = classes 
 
 
     def __enter__(self):
@@ -91,22 +92,26 @@ class VideoTracker(object):
             bbox_xywh, cls_conf, cls_ids = self.detector(im)
 
             # select person class
-            mask = cls_ids==0
+            # mask = cls_ids==0
+            mask = [self.class_names[id] in self.classes for id in cls_ids]
 
             bbox_xywh = bbox_xywh[mask]
             # bbox dilation just in case bbox too small, delete this line if using a better pedestrian detector
             bbox_xywh[:,3:] *= 1.2 
             cls_conf = cls_conf[mask]
+            cls_ids = cls_ids[mask]
 
             # do tracking
-            outputs = self.deepsort.update(bbox_xywh, cls_conf, im)
+            outputs = self.deepsort.update(bbox_xywh, cls_conf, im, cls_ids)
 
             # draw boxes for visualization
             if len(outputs) > 0:
                 bbox_tlwh = []
                 bbox_xyxy = outputs[:,:4]
-                identities = outputs[:,-1]
-                ori_im = draw_boxes(ori_im, bbox_xyxy, identities)
+                identities = outputs[:,-2]
+                class_ids = outputs[:,-1]
+                class_names = [self.class_names[id] for id in class_ids]
+                ori_im = draw_boxes(ori_im, bbox_xyxy, identities, class_names=class_names)
 
                 for bb_xyxy in bbox_xyxy:
                     bbox_tlwh.append(self.deepsort._xyxy_to_tlwh(bb_xyxy))
